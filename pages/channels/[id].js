@@ -13,7 +13,7 @@ const ChannelsPage = (props) => {
 
   // 否则加载页面
   const { id: channelId } = router.query
-  const { messages, channels } = useStore({ channelId })
+  const { messages, channels, unreadChannels } = useStore({ channelId })
 
   useEffect(() => {
     messagesEndRef.current.scrollIntoView({
@@ -31,7 +31,7 @@ const ChannelsPage = (props) => {
 
   // 渲染频道和消息
   return (
-    <Layout channels={channels} activeChannelId={channelId}>
+    <Layout channels={channels} activeChannelId={channelId} unreadChannels={unreadChannels}>
       <div className="relative flex flex-col h-full">
         <div className="Messages flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
           <div className="p-2">

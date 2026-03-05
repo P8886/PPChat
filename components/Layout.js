@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Head from 'next/head'
 import { useContext, useState } from 'react'
 import UserContext from '~/lib/UserContext'
 import { addChannel, deleteChannel } from '~/lib/Store'
@@ -26,8 +27,13 @@ export default function Layout(props) {
     }
   }
 
+  const unreadCount = props.unreadChannels?.size || 0
+
   return (
     <main className="main flex w-screen overflow-hidden" style={{ height: '100dvh' }}>
+      <Head>
+        <title>{unreadCount > 0 ? `🔴 (${unreadCount}) ` : ''}PPChat</title>
+      </Head>
       {/* 移动端遮罩层 */}
       {sidebarOpen && (
         <div 
@@ -78,6 +84,7 @@ export default function Layout(props) {
                 channel={x}
                 key={x.id}
                 isActiveChannel={x.id === props.activeChannelId}
+                isUnread={props.unreadChannels?.has(x.id)}
                 user={user}
                 onSelect={() => setSidebarOpen(false)}
               />
@@ -104,7 +111,7 @@ export default function Layout(props) {
   )
 }
 
-const SidebarItem = ({ channel, isActiveChannel, user, onSelect }) => (
+const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => (
   <>
     <li className="flex items-center justify-between">
       <Link 
@@ -113,6 +120,7 @@ const SidebarItem = ({ channel, isActiveChannel, user, onSelect }) => (
         onClick={onSelect}
       >
         {channel.slug}
+        {isUnread && <span className="ml-2 text-red-500 text-xs">●</span>}
       </Link>
       {channel.id !== 1 && (channel.created_by === user?.id || user?.appRole === 'admin') && (
         <button onClick={() => deleteChannel(channel.id)}>
