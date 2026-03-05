@@ -38,7 +38,6 @@ body {
 
 .channel-list {
   li a:before {
-    content: '# ';
     opacity: 0.5;
   }
   li a:hover {
@@ -51,6 +50,10 @@ body {
   display: flex;
   flex-direction: column-reverse;
   -webkit-overflow-scrolling: touch;
+  // 优化滚动条样式
+  scrollbar-width: thin;
+  // scrollbar-width: none;
+  scrollbar-color: #6b7280 #e5e7eb;
 }
 
 /* 移动端安全区域 */
