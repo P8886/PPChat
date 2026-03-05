@@ -3,6 +3,17 @@ import UserContext from '~/lib/UserContext'
 import { deleteMessage } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 
+const formatTime = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 const Message = ({ message }) => {
   const { user } = useContext(UserContext)
   const isOwnMessage = user?.id === message.user_id
@@ -20,6 +31,9 @@ const Message = ({ message }) => {
         <div className={isOwnMessage ? 'text-right' : 'text-left'}>
           <p className={`font-bold ${isOwnMessage ? 'text-green-400' : 'text-blue-400'}`}>
             {message?.author?.username}
+          </p>
+          <p className="text-gray-400 text-xs">
+            {formatTime(message.inserted_at)}
           </p>
           <p className="text-white bg-gray-700 px-3 py-1 rounded-lg inline-block">
             {message.message}
