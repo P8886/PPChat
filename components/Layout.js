@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import { useContext } from 'react'
+import { useContext, useState } from 'react'
 import UserContext from '~/lib/UserContext'
 import { addChannel, deleteChannel } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 
 export default function Layout(props) {
   const { signOut, user } = useContext(UserContext)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const slugify = (text) => {
     return text
@@ -27,12 +28,30 @@ export default function Layout(props) {
 
   return (
     <main className="main flex h-screen w-screen overflow-hidden">
+      {/* 移动端遮罩层 */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* 侧边栏 */}
       <nav
-        className="w-64 bg-gray-900 text-gray-100 overflow-scroll "
-        style={{ maxWidth: '20%', minWidth: 150, maxHeight: '100vh' }}
+        className={`fixed md:relative z-30 h-full bg-gray-900 text-gray-100 overflow-y-auto transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        style={{ width: 260, maxWidth: '80vw', minWidth: 200 }}
       >
-        <div className="p-2 ">
+        <div className="p-2">
+          {/* 移动端关闭按钮 */}
+          <div className="md:hidden flex justify-end p-2">
+            <button 
+              onClick={() => setSidebarOpen(false)}
+              className="text-gray-400 hover:text-white text-2xl"
+            >
+              ✕
+            </button>
+          </div>
           <div className="p-2">
             <button
               className="bg-blue-900 hover:bg-blue-800 text-white py-2 px-4 rounded w-full transition duration-150"
@@ -43,7 +62,7 @@ export default function Layout(props) {
           </div>
           <hr className="m-2" />
           <div className="p-2 flex flex-col space-y-2">
-            <h6 className="text-xs">{user?.email}</h6>
+            <h6 className="text-xs break-all">{user?.email}</h6>
             <button
               className="bg-blue-900 hover:bg-blue-800 text-white py-2 px-4 rounded w-full transition duration-150"
               onClick={() => signOut()}
@@ -60,6 +79,7 @@ export default function Layout(props) {
                 key={x.id}
                 isActiveChannel={x.id === props.activeChannelId}
                 user={user}
+                onSelect={() => setSidebarOpen(false)}
               />
             ))}
           </ul>
@@ -67,17 +87,30 @@ export default function Layout(props) {
       </nav>
 
       {/* 消息区域 */}
-      <div className="flex-1 bg-gray-800 h-screen">{props.children}</div>
+      <div className="flex-1 bg-gray-800 h-screen flex flex-col">
+        {/* 移动端头部 */}
+        <header className="md:hidden bg-gray-900 text-white p-3 flex items-center">
+          <button 
+            onClick={() => setSidebarOpen(true)}
+            className="text-2xl mr-4"
+          >
+            ☰
+          </button>
+          <span className="font-bold">PPChat</span>
+        </header>
+        <div className="flex-1 overflow-hidden">{props.children}</div>
+      </div>
     </main>
   )
 }
 
-const SidebarItem = ({ channel, isActiveChannel, user }) => (
+const SidebarItem = ({ channel, isActiveChannel, user, onSelect }) => (
   <>
     <li className="flex items-center justify-between">
       <Link 
         href={`/channels/${channel.id}`}
         className={isActiveChannel ? 'font-bold' : ''}
+        onClick={onSelect}
       >
         {channel.slug}
       </Link>

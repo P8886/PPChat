@@ -20,8 +20,8 @@ const Message = ({ message }) => {
 
   return (
     <div className={`py-1 flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-      <div className="flex items-center space-x-2">
-        <div className="text-gray-100 w-4">
+      <div className={`flex items-center space-x-1 sm:space-x-2 ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
+        <div className="text-gray-100 w-4 shrink-0">
           {(isOwnMessage || ['admin', 'moderator'].includes(user?.appRole)) && (
             <button onClick={() => deleteMessage(message.id)}>
               <TrashIcon />
@@ -29,13 +29,13 @@ const Message = ({ message }) => {
           )}
         </div>
         <div className={isOwnMessage ? 'text-right' : 'text-left'}>
-          <p className={`font-bold ${isOwnMessage ? 'text-green-400' : 'text-blue-400'}`}>
+          <p className={`font-bold text-sm sm:text-base ${isOwnMessage ? 'text-green-400' : 'text-blue-400'}`}>
             {message?.author?.username}
           </p>
           <p className="text-gray-400 text-xs">
             {formatTime(message.inserted_at)}
           </p>
-          <p className="text-white bg-gray-700 px-3 py-1 rounded-lg inline-block">
+          <p className="text-white bg-gray-700 px-2 sm:px-3 py-1 rounded-lg inline-block text-sm sm:text-base max-w-[200px] sm:max-w-xs break-words">
             {message.message}
           </p>
         </div>
