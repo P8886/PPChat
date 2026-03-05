@@ -12,7 +12,7 @@ const ChannelsPage = (props) => {
   const messagesEndRef = useRef(null)
 
   const { id: channelId } = router.query
-  const { messages, channels } = useStore({ channelId })
+  const { messages, channels, unreadChannels } = useStore({ channelId })
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -30,7 +30,7 @@ const ChannelsPage = (props) => {
   const currentChannel = channels.find(c => c.id === Number(channelId))
 
   return (
-    <Layout channels={channels} activeChannelId={channelId}>
+    <Layout channels={channels} activeChannelId={channelId} unreadChannels={unreadChannels}>
       <div className="relative flex flex-col h-full">
         <div className="Messages flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
           <div className="p-3 sm:p-4">
