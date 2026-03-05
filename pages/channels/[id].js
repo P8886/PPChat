@@ -32,16 +32,19 @@ const ChannelsPage = (props) => {
   // 渲染频道和消息
   return (
     <Layout channels={channels} activeChannelId={channelId}>
-      <div className="relative h-screen">
-        <div className="Messages h-full pb-16">
-          <div className="p-2 overflow-y-auto">
+      <div className="relative flex flex-col h-full">
+        <div className="Messages flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+          <div className="p-2">
             {messages.map((x) => (
               <Message key={x.id} message={x} />
             ))}
             <div ref={messagesEndRef} style={{ height: 0 }} />
           </div>
         </div>
-        <div className="p-2 absolute bottom-0 left-0 w-full">
+        <div 
+          className="p-2 shrink-0 bg-gray-800" 
+          style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+        >
           <MessageInput onSubmit={async (text) => addMessage(text, channelId, user.id)} />
         </div>
       </div>

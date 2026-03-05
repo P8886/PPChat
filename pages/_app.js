@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import UserContext from 'lib/UserContext'
 import { supabase } from 'lib/Store'
 import { jwtDecode } from 'jwt-decode'
+import Head from 'next/head'
 
 export default function SupabaseSlackClone({ Component, pageProps }) {
   const [userLoaded, setUserLoaded] = useState(false)
@@ -58,6 +59,13 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
         signOut,
       }}
     >
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#1a1a1a" />
+      </Head>
       <Component {...pageProps} />
     </UserContext.Provider>
   )

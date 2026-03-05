@@ -2,16 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body,
-#__next,
-.main {
-  max-height: 100vh;
-  height: 100vh;
+:root {
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+}
+
+#__next {
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   padding: 0;
   overflow: hidden;
 }
+
+.main {
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 .channel-list {
   li a:before {
     content: '# ';
@@ -21,8 +45,17 @@ body,
     opacity: 0.9;
   }
 }
+
 .Messages {
   overflow: auto;
   display: flex;
   flex-direction: column-reverse;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 移动端安全区域 */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }

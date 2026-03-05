@@ -27,7 +27,7 @@ export default function Layout(props) {
   }
 
   return (
-    <main className="main flex h-screen w-screen overflow-hidden">
+    <main className="main flex w-screen overflow-hidden" style={{ height: '100dvh' }}>
       {/* 移动端遮罩层 */}
       {sidebarOpen && (
         <div 
@@ -38,9 +38,9 @@ export default function Layout(props) {
 
       {/* 侧边栏 */}
       <nav
-        className={`fixed md:relative z-30 h-full bg-gray-900 text-gray-100 overflow-y-auto transition-transform duration-300 ease-in-out
+        className={`fixed md:relative z-30 bg-gray-900 text-gray-100 overflow-y-auto transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
-        style={{ width: 260, maxWidth: '80vw', minWidth: 200 }}
+        style={{ width: 260, maxWidth: '80vw', minWidth: 200, height: '100dvh' }}
       >
         <div className="p-2">
           {/* 移动端关闭按钮 */}
@@ -87,9 +87,9 @@ export default function Layout(props) {
       </nav>
 
       {/* 消息区域 */}
-      <div className="flex-1 bg-gray-800 h-screen flex flex-col">
+      <div className="flex-1 bg-gray-800 flex flex-col overflow-hidden min-h-0">
         {/* 移动端头部 */}
-        <header className="md:hidden bg-gray-900 text-white p-3 flex items-center">
+        <header className="md:hidden bg-gray-900 text-white p-3 flex items-center shrink-0" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
           <button 
             onClick={() => setSidebarOpen(true)}
             className="text-2xl mr-4"
@@ -98,7 +98,7 @@ export default function Layout(props) {
           </button>
           <span className="font-bold">PPChat</span>
         </header>
-        <div className="flex-1 overflow-hidden">{props.children}</div>
+        <div className="flex-1 overflow-hidden min-h-0">{props.children}</div>
       </div>
     </main>
   )
