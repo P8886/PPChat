@@ -8,6 +8,10 @@ import TrashIcon from '~/components/TrashIcon'
 export default function Layout(props) {
   const { signOut, user } = useContext(UserContext)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showNewChannelModal, setShowNewChannelModal] = useState(false)
+  const [newChannelName, setNewChannelName] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
+  const [channelPassword, setChannelPassword] = useState('')
 
   const slugify = (text) => {
     return text
@@ -15,16 +19,26 @@ export default function Layout(props) {
       .toLowerCase()
       .replace(/\s+/g, '-') // 将空格替换为 -
       .replace(/[^\w-]+/g, '') // 移除所有非单词字符
-      .replace(/--+/g, '-') // 将多个 - 替换为单个 -
+      .replace(/--+/g, '-') // 将多个 - 替捦为单个 -
       .replace(/^-+/, '') // 移除开头的 -
       .replace(/-+$/, '') // 移除结尾的 -
   }
 
   const newChannel = async () => {
-    const slug = prompt('请输入频道名称')
-    if (slug) {
-      addChannel(slugify(slug), user.id)
+    setShowNewChannelModal(true)
+    setNewChannelName('')
+    setIsPrivate(false)
+    setChannelPassword('')
+  }
+
+  const handleCreateChannel = async () => {
+    if (!newChannelName.trim()) return
+    if (isPrivate && !channelPassword.trim()) {
+      alert('私密频道需要设置密码')
+      return
     }
+    await addChannel(slugify(newChannelName), user.id, isPrivate, isPrivate ? channelPassword : null)
+    setShowNewChannelModal(false)
   }
 
   const unreadCount = props.unreadChannels?.size || 0
@@ -107,6 +121,65 @@ export default function Layout(props) {
         </header>
         <div className="flex-1 overflow-hidden min-h-0">{props.children}</div>
       </div>
+
+      {/* 新建频道模态框 */}
+      {showNewChannelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-sm mx-4">
+            <h2 className="text-xl font-bold text-white mb-4">新建频道</h2>
+            
+            <div className="mb-4">
+              <label className="text-gray-300 text-sm mb-1 block">频道名称</label>
+              <input
+                type="text"
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value)}
+                placeholder="输入频道名称"
+                className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600"
+              />
+            </div>
+
+            <div className="mb-4 flex items-center">
+              <input
+                type="checkbox"
+                id="isPrivate"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                className="mr-2"
+              />
+              <label htmlFor="isPrivate" className="text-gray-300">设为私密频道</label>
+            </div>
+
+            {isPrivate && (
+              <div className="mb-4">
+                <label className="text-gray-300 text-sm mb-1 block">频道密码</label>
+                <input
+                  type="password"
+                  value={channelPassword}
+                  onChange={(e) => setChannelPassword(e.target.value)}
+                  placeholder="输入访问密码"
+                  className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCreateChannel}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded transition"
+              >
+                创建
+              </button>
+              <button
+                onClick={() => setShowNewChannelModal(false)}
+                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded transition"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
@@ -119,6 +192,7 @@ const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => 
         className={isActiveChannel ? 'font-bold' : ''}
         onClick={onSelect}
       >
+        {channel.is_private && <span className="mr-1">🔒</span>}
         {channel.slug}
         {isUnread && <span className="ml-2 text-red-500 text-xs">●</span>}
       </Link>

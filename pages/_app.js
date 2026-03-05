@@ -6,6 +6,8 @@ import { supabase } from 'lib/Store'
 import { jwtDecode } from 'jwt-decode'
 import Head from 'next/head'
 
+const LAST_CHANNEL_KEY = 'ppchat_last_channel'
+
 export default function SupabaseSlackClone({ Component, pageProps }) {
   const [userLoaded, setUserLoaded] = useState(false)
   const [user, setUser] = useState(null)
@@ -26,7 +28,9 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
       setUser(currentUser ?? null)
       setUserLoaded(!!currentUser)
       if (currentUser) {
-        router.push('/channels/[id]', '/channels/1')
+        // 恢复上次访问的房间，默认为1
+        const lastChannel = localStorage.getItem(LAST_CHANNEL_KEY) || '1'
+        router.push('/channels/[id]', `/channels/${lastChannel}`)
       }
     }
 
