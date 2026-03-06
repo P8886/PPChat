@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const MessageInput = ({ onSubmit }) => {
+const MessageInput = ({ onSubmit, onFocus }) => {
   const [messageText, setMessageText] = useState('')
 
   const submitOnEnter = (event) => {
@@ -18,6 +18,10 @@ const MessageInput = ({ onSubmit }) => {
     }
   }
 
+  const handleFocus = () => {
+    onFocus?.()
+  }
+
   return (
     <div className="flex gap-2">
       <input
@@ -27,6 +31,7 @@ const MessageInput = ({ onSubmit }) => {
         value={messageText}
         onChange={(e) => setMessageText(e.target.value)}
         onKeyDown={(e) => submitOnEnter(e)}
+        onFocus={handleFocus}
       />
       <button
         onClick={handleSubmit}

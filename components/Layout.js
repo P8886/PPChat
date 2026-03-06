@@ -112,6 +112,9 @@ export default function Layout(props) {
   }
 
   const unreadCount = getEffectiveUnreadCount(props.unreadChannels, props.channels)
+  
+  // 获取当前频道信息
+  const currentChannel = props.channels.find(c => c.id === Number(props.activeChannelId))
 
   return (
     <main className="main flex w-screen overflow-hidden" style={{ height: '100dvh' }}>
@@ -212,6 +215,11 @@ export default function Layout(props) {
           </div>
           <hr className="m-2" />
           <h4 className="font-bold">频道列表</h4>
+          {currentChannel && (
+            <div className="text-xs text-gray-400 mt-1 mb-2">
+              当前: {currentChannel.is_private && '🔒 '}#{currentChannel.slug}
+            </div>
+          )}
           <ul className="channel-list">
             {props.channels.map((x) => (
               <SidebarItem
@@ -237,7 +245,14 @@ export default function Layout(props) {
           >
             ☰
           </button>
-          <span className="font-bold">PPChat</span>
+          <span className="font-bold">
+            {currentChannel ? (
+              <>
+                {currentChannel.is_private && <span className="mr-1">🔒</span>}
+                #{currentChannel.slug}
+              </>
+            ) : 'PPChat'}
+          </span>
         </header>
         <div className="flex-1 overflow-hidden min-h-0">{props.children}</div>
       </div>

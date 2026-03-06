@@ -19,7 +19,7 @@ const ChannelsPage = (props) => {
 
   // 否则加载页面
   const { id: channelId } = router.query
-  const { messages, channels, unreadChannels } = useStore({ channelId })
+  const { messages, channels, unreadChannels, clearChannelUnread } = useStore({ channelId })
 
   // 保存当前房间到localStorage
   useEffect(() => {
@@ -119,7 +119,10 @@ const ChannelsPage = (props) => {
               className="p-2 shrink-0 bg-gray-800" 
               style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
             >
-              <MessageInput onSubmit={async (text) => addMessage(text, channelId, user.id)} />
+              <MessageInput 
+                onSubmit={async (text) => addMessage(text, channelId, user.id)} 
+                onFocus={() => clearChannelUnread(channelId)}
+              />
             </div>
           </>
         )}
