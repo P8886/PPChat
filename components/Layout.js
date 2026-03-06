@@ -1,17 +1,29 @@
 import Link from 'next/link'
 import Head from 'next/head'
-import { useContext, useState } from 'react'
+import { useContext, useState, useEffect } from 'react'
 import UserContext from '~/lib/UserContext'
-import { addChannel, deleteChannel } from '~/lib/Store'
+import { addChannel, deleteChannel, updateUsername, checkUsernameAvailable } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 
 export default function Layout(props) {
-  const { signOut, user } = useContext(UserContext)
+  const { signOut, user, refreshUser } = useContext(UserContext)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showNewChannelModal, setShowNewChannelModal] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
   const [channelPassword, setChannelPassword] = useState('')
+  // 用户名编辑状态
+  const [editingUsername, setEditingUsername] = useState(false)
+  const [usernameInput, setUsernameInput] = useState('')
+  const [usernameError, setUsernameError] = useState('')
+  const [usernameSaving, setUsernameSaving] = useState(false)
+
+  // 同步用户名到输入框
+  useEffect(() => {
+    if (user?.username) {
+      setUsernameInput(user.username)
+    }
+  }, [user?.username])
 
   const slugify = (text) => {
     return text
@@ -39,6 +51,45 @@ export default function Layout(props) {
     }
     await addChannel(slugify(newChannelName), user.id, isPrivate, isPrivate ? channelPassword : null)
     setShowNewChannelModal(false)
+  }
+
+  // 用户名编辑
+  const handleUsernameChange = (e) => {
+    const value = e.target.value.replace(/[^a-zA-Z0-9_]/g, '')
+    setUsernameInput(value)
+    setUsernameError('')
+  }
+
+  const handleSaveUsername = async () => {
+    if (!usernameInput.trim() || usernameInput.length < 2) {
+      setUsernameError('用户名至少2个字符')
+      return
+    }
+    
+    if (usernameInput === user?.username) {
+      setEditingUsername(false)
+      return
+    }
+
+    setUsernameSaving(true)
+    
+    // 检查用户名是否可用
+    const available = await checkUsernameAvailable(usernameInput)
+    if (!available) {
+      setUsernameError('用户名已被使用')
+      setUsernameSaving(false)
+      return
+    }
+
+    const { error } = await updateUsername(user.id, usernameInput)
+    if (error) {
+      setUsernameError('保存失败')
+    } else {
+      // 刷新用户信息
+      await refreshUser()
+      setEditingUsername(false)
+    }
+    setUsernameSaving(false)
   }
 
   const unreadCount = props.unreadChannels?.size || 0
@@ -82,7 +133,57 @@ export default function Layout(props) {
           </div>
           <hr className="m-2" />
           <div className="p-2 flex flex-col space-y-2">
-            <h6 className="text-xs break-all">{user?.email}</h6>
+            {/* 用户名显示/编辑 */}
+            {editingUsername ? (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={handleUsernameChange}
+                  placeholder="输入用户名"
+                  className="w-full p-1.5 rounded bg-gray-700 text-white text-sm border border-gray-600"
+                  minLength={2}
+                  maxLength={20}
+                  autoFocus
+                />
+                {usernameError && (
+                  <p className="text-red-400 text-xs">{usernameError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveUsername}
+                    disabled={usernameSaving}
+                    className="flex-1 bg-green-600 hover:bg-green-500 text-white py-1 px-2 rounded text-sm transition disabled:opacity-50"
+                  >
+                    {usernameSaving ? '保存中...' : '保存'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingUsername(false)
+                      setUsernameInput(user?.username || '')
+                      setUsernameError('')
+                    }}
+                    className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 px-2 rounded text-sm transition"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div 
+                className="flex items-center justify-between cursor-pointer hover:bg-gray-800 p-1 rounded"
+                onClick={() => setEditingUsername(true)}
+                title="点击编辑用户名"
+              >
+                <div>
+                  <div className="font-medium text-sm">
+                    {user?.username || <span className="text-gray-400">设置用户名</span>}
+                  </div>
+                  <h6 className="text-xs text-gray-400 break-all">{user?.email}</h6>
+                </div>
+                <span className="text-gray-400 text-sm">✏️</span>
+              </div>
+            )}
             <button
               className="bg-blue-900 hover:bg-blue-800 text-white py-2 px-4 rounded w-full transition duration-150"
               onClick={() => signOut()}

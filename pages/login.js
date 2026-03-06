@@ -3,10 +3,15 @@ import { supabase } from 'lib/Store'
 import Link from 'next/link'
 
 const Login = () => {
-  const [username, setUsername] = useState('')
+  const [account, setAccount] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // 判断是否为邮箱格式
+  const isEmail = (value) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -14,13 +19,34 @@ const Login = () => {
     setError('')
     
     try {
+      let loginEmail = account
+      
+      // 如果不是邮箱格式，尝试通过用户名查找邮箱
+      if (!isEmail(account)) {
+        const { data, error: rpcError } = await supabase.rpc('get_email_by_username', {
+          username_input: account
+        })
+        
+        if (rpcError || !data) {
+          setError('用户名不存在')
+          setLoading(false)
+          return
+        }
+        
+        loginEmail = data
+      }
+      
       const { error } = await supabase.auth.signInWithPassword({ 
-        email: username, 
+        email: loginEmail, 
         password 
       })
       
       if (error) {
-        setError('登录失败: ' + error.message)
+        if (error.message.includes('Invalid login credentials')) {
+          setError('账号或密码错误')
+        } else {
+          setError('登录失败: ' + error.message)
+        }
       }
     } catch (err) {
       setError('登录失败，请稍后重试')
@@ -43,15 +69,16 @@ const Login = () => {
           
           <form onSubmit={handleLogin}>
             <div className="mb-4">
-              <label className="font-bold text-grey-darker block mb-2">邮箱</label>
+              <label className="font-bold text-grey-darker block mb-2">账号</label>
               <input
-                type="email"
+                type="text"
                 className="block appearance-none w-full bg-white border border-grey-light hover:border-grey px-2 py-2 rounded shadow"
-                placeholder="请输入邮箱"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                placeholder="请输入用户名或邮箱"
+                value={account}
+                onChange={(e) => setAccount(e.target.value)}
                 required
               />
+              <p className="text-gray-400 text-xs mt-1">支持用户名或邮箱登录</p>
             </div>
             <div className="mb-6">
               <label className="font-bold text-grey-darker block mb-2">密码</label>

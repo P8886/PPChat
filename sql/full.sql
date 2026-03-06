@@ -18,11 +18,12 @@ create type public.user_status as enum ('ONLINE', 'OFFLINE');
 -- USERS 用户表
 create table public.users (
   id          uuid references auth.users not null primary key,
-  username    text,
+  username    text unique,
   status      user_status default 'OFFLINE'::public.user_status
 );
 comment on table public.users is 'Profile data for each user.';
 comment on column public.users.id is 'References the internal Supabase Auth user.';
+comment on column public.users.username is 'Unique username for login.';
 
 -- CHANNELS 频道表（含私密房间支持）
 create table public.channels (
@@ -152,6 +153,26 @@ begin
     return user_id;
 end;
 $$ language plpgsql;
+
+-- 根据用户名查找邮箱（用于用户名登录）
+create or replace function public.get_email_by_username(username_input text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  found_email text;
+begin
+  -- 先从public.users查找对应的用户id，再从auth.users获取邮箱
+  select au.email into found_email
+  from public.users pu
+  join auth.users au on pu.id = au.id
+  where lower(pu.username) = lower(username_input);
+  
+  return found_email;
+end;
+$$;
 
 -- ============================================
 -- 4. 触发器

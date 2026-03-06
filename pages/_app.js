@@ -14,16 +14,36 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
   const [session, setSession] = useState(null)
   const router = useRouter()
 
+  // 从public.users获取额外用户信息
+  const fetchUserProfile = async (userId) => {
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('username')
+        .eq('id', userId)
+        .single()
+      return data
+    } catch (error) {
+      console.error('获取用户信息失败', error)
+      return null
+    }
+  }
+
   useEffect(() => {
-    function saveSession(
+    async function saveSession(
       /** @type {Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']} */
       session
     ) {
       setSession(session)
       const currentUser = session?.user
-      if (session) {
+      if (session && currentUser) {
         const jwt = jwtDecode(session.access_token)
         currentUser.appRole = jwt.user_role
+        // 获取用户名
+        const profile = await fetchUserProfile(currentUser.id)
+        if (profile) {
+          currentUser.username = profile.username
+        }
       }
       setUser(currentUser ?? null)
       setUserLoaded(!!currentUser)
@@ -43,10 +63,33 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
       }
     )
 
+    // 监听users表变化，更新用户名
+    const userChannel = supabase
+      .channel('public:users:user_profile')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'users' },
+        (payload) => {
+          if (user && payload.new.id === user.id) {
+            setUser(prev => ({ ...prev, username: payload.new.username }))
+          }
+        }
+      )
+      .subscribe()
+
     return () => {
       authListener.unsubscribe()
+      supabase.removeChannel(userChannel)
     }
   }, [])
+
+  // 手动刷新用户信息
+  const refreshUser = async () => {
+    if (!user?.id) return
+    const profile = await fetchUserProfile(user.id)
+    if (profile) {
+      setUser(prev => ({ ...prev, username: profile.username }))
+    }
+  }
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -61,6 +104,7 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
         userLoaded,
         user,
         signOut,
+        refreshUser,
       }}
     >
       <Head>

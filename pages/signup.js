@@ -4,30 +4,97 @@ import Link from 'next/link'
 
 const Signup = () => {
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingUsername, setCheckingUsername] = useState(false)
+  const [usernameError, setUsernameError] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
+  // 检查用户名是否可用
+  const checkUsername = async (value) => {
+    if (!value || value.length < 2) {
+      setUsernameError('')
+      return
+    }
+    
+    setCheckingUsername(true)
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('username')
+        .ilike('username', value)
+        .limit(1)
+      
+      if (data && data.length > 0) {
+        setUsernameError('用户名已被使用')
+      } else {
+        setUsernameError('')
+      }
+    } catch (err) {
+      console.error('检查用户名失败', err)
+    } finally {
+      setCheckingUsername(false)
+    }
+  }
+
+  const handleUsernameChange = (e) => {
+    const value = e.target.value.replace(/[^a-zA-Z0-9_]/g, '')
+    setUsername(value)
+    // 防抖检查
+    clearTimeout(window.usernameCheckTimeout)
+    window.usernameCheckTimeout = setTimeout(() => checkUsername(value), 300)
+  }
+
   const handleSignup = async (e) => {
     e.preventDefault()
+    
+    if (usernameError) {
+      return
+    }
+    
+    if (username.length < 2) {
+      setError('用户名至少需要2个字符')
+      return
+    }
+    
     setLoading(true)
     setError('')
     setMessage('')
     
     try {
-      const { error, data: { user, session } } = await supabase.auth.signUp({ 
-        email: username, 
+      // 1. 注册auth用户
+      const { error: signUpError, data: { user } } = await supabase.auth.signUp({ 
+        email, 
         password 
       })
       
-      if (error) {
-        setError('注册失败: ' + error.message)
-      } else if (user && user.identities && user.identities.length === 0) {
-        // 邮箱已注册但 identities 为空
+      if (signUpError) {
+        setError('注册失败: ' + signUpError.message)
+        setLoading(false)
+        return
+      }
+      
+      if (user && user.identities && user.identities.length === 0) {
         setError('该邮箱已被注册，请直接登录')
-      } else if (!user) {
-        setMessage('注册成功！请查收验证邮件后登录')
+        setLoading(false)
+        return
+      }
+      
+      // 2. 更新public.users表的username
+      if (user) {
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ username })
+          .eq('id', user.id)
+        
+        if (updateError) {
+          console.error('设置用户名失败', updateError)
+          setError('注册成功但设置用户名失败，请联系管理员')
+        } else {
+          setMessage('注册成功！请查收验证邮件后登录')
+        }
       } else {
         setMessage('注册成功！请查收验证邮件后登录')
       }
@@ -58,16 +125,42 @@ const Signup = () => {
           
           <form onSubmit={handleSignup}>
             <div className="mb-4">
+              <label className="font-bold text-grey-darker block mb-2">用户名</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  className={`block appearance-none w-full bg-white border px-2 py-2 rounded shadow ${
+                    usernameError ? 'border-red-500' : 'border-grey-light hover:border-grey'
+                  }`}
+                  placeholder="请输入用户名（字母、数字、下划线）"
+                  value={username}
+                  onChange={handleUsernameChange}
+                  required
+                  minLength={2}
+                  maxLength={20}
+                />
+                {checkingUsername && (
+                  <span className="absolute right-2 top-2 text-gray-400 text-sm">检查中...</span>
+                )}
+              </div>
+              {usernameError && (
+                <p className="text-red-500 text-sm mt-1">{usernameError}</p>
+              )}
+              <p className="text-gray-400 text-xs mt-1">2-20个字符，支持字母、数字、下划线</p>
+            </div>
+            
+            <div className="mb-4">
               <label className="font-bold text-grey-darker block mb-2">邮箱</label>
               <input
                 type="email"
                 className="block appearance-none w-full bg-white border border-grey-light hover:border-grey px-2 py-2 rounded shadow"
                 placeholder="请输入邮箱"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
+            
             <div className="mb-6">
               <label className="font-bold text-grey-darker block mb-2">密码</label>
               <input
@@ -83,7 +176,7 @@ const Signup = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || usernameError}
               className="bg-indigo-700 hover:bg-indigo-600 text-white py-2 px-4 rounded w-full transition duration-150 disabled:opacity-50"
             >
               {loading ? '注册中...' : '注册'}
