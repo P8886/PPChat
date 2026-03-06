@@ -215,11 +215,6 @@ export default function Layout(props) {
           </div>
           <hr className="m-2" />
           <h4 className="font-bold">频道列表</h4>
-          {currentChannel && (
-            <div className="text-xs text-gray-400 mt-1 mb-2">
-              当前: {currentChannel.is_private && '🔒 '}#{currentChannel.slug}
-            </div>
-          )}
           <ul className="channel-list">
             {props.channels.map((x) => (
               <SidebarItem
@@ -237,6 +232,17 @@ export default function Layout(props) {
 
       {/* 消息区域 */}
       <div className="flex-1 bg-gray-800 flex flex-col overflow-hidden min-h-0">
+        {/* 桌面端频道头部 */}
+        <header className="hidden md:flex bg-gray-900 text-white p-3 items-center shrink-0 border-b border-gray-700">
+          {currentChannel ? (
+            <span className="font-bold">
+              {currentChannel.is_private && <span className="mr-1">🔒</span>}
+              #{currentChannel.slug}
+            </span>
+          ) : (
+            <span className="font-bold">PPChat</span>
+          )}
+        </header>
         {/* 移动端头部 */}
         <header className="md:hidden bg-gray-900 text-white p-3 flex items-center shrink-0" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
           <button 
