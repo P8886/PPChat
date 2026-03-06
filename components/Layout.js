@@ -5,6 +5,25 @@ import UserContext from '~/lib/UserContext'
 import { addChannel, deleteChannel, updateUsername, checkUsernameAvailable } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 
+const ACCESSIBLE_PRIVATE_KEY = 'ppchat_accessible_private'
+
+// 计算有效的未读数（排除未验证密码的私密频道）
+const getEffectiveUnreadCount = (unreadChannels, channels) => {
+  if (!unreadChannels?.size) return 0
+  const accessibleStr = typeof window !== 'undefined' ? localStorage.getItem(ACCESSIBLE_PRIVATE_KEY) || '[]' : '[]'
+  const accessible = JSON.parse(accessibleStr)
+  
+  let count = 0
+  unreadChannels.forEach(channelId => {
+    const channel = channels.find(c => c.id === channelId)
+    // 公开频道直接计数，私密频道需要验证过密码
+    if (channel && (!channel.is_private || accessible.includes(Number(channelId)))) {
+      count++
+    }
+  })
+  return count
+}
+
 export default function Layout(props) {
   const { signOut, user, refreshUser } = useContext(UserContext)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -92,7 +111,7 @@ export default function Layout(props) {
     setUsernameSaving(false)
   }
 
-  const unreadCount = props.unreadChannels?.size || 0
+  const unreadCount = getEffectiveUnreadCount(props.unreadChannels, props.channels)
 
   return (
     <main className="main flex w-screen overflow-hidden" style={{ height: '100dvh' }}>
@@ -285,8 +304,19 @@ export default function Layout(props) {
   )
 }
 
-const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => (
-  <>
+const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => {
+  // 检查是否应该显示未读红点
+  // 私密频道只有在用户已验证密码后才显示未读提示
+  const shouldShowUnread = () => {
+    if (!isUnread) return false
+    if (!channel.is_private) return true
+    // 私密频道：检查用户是否有访问权限
+    const accessibleStr = typeof window !== 'undefined' ? localStorage.getItem(ACCESSIBLE_PRIVATE_KEY) || '[]' : '[]'
+    const accessible = JSON.parse(accessibleStr)
+    return accessible.includes(Number(channel.id))
+  }
+
+  return (
     <li className="flex items-center justify-between">
       <Link 
         href={`/channels/${channel.id}`}
@@ -295,7 +325,7 @@ const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => 
       >
         {channel.is_private && <span className="mr-1">🔒</span>}
         {channel.slug}
-        {isUnread && <span className="ml-2 text-red-500 text-xs">●</span>}
+        {shouldShowUnread() && <span className="ml-2 text-red-500 text-xs">●</span>}
       </Link>
       {channel.id !== 1 && (channel.created_by === user?.id || user?.appRole === 'admin') && (
         <button onClick={() => deleteChannel(channel.id)}>
@@ -303,5 +333,5 @@ const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => 
         </button>
       )}
     </li>
-  </>
-)
+  )
+}
