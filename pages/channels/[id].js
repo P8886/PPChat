@@ -2,7 +2,7 @@ import Layout from '~/components/Layout'
 import Message from '~/components/Message'
 import MessageInput from '~/components/MessageInput'
 import { useRouter } from 'next/router'
-import { useStore, addMessage } from '~/lib/Store'
+import { useStore, addMessage, uploadImage } from '~/lib/Store'
 import { useContext, useEffect, useRef, useState } from 'react'
 import UserContext from '~/lib/UserContext'
 
@@ -60,6 +60,22 @@ const ChannelsPage = (props) => {
     } else {
       setPasswordError('密码错误')
     }
+  }
+
+  // 处理图片上传
+  const handleImageUpload = async (file) => {
+    if (!user?.id) return
+    
+    const { url, error } = await uploadImage(file, user.id)
+    
+    if (error) {
+      console.error('上传失败:', error)
+      alert('图片上传失败，请稍后重试')
+      return
+    }
+    
+    // 发送图片消息，直接传 URL，并设置 message_type 为 'image'
+    await addMessage(url, channelId, user.id, 'image')
   }
 
   useEffect(() => {
@@ -122,6 +138,7 @@ const ChannelsPage = (props) => {
               <MessageInput 
                 onSubmit={async (text) => addMessage(text, channelId, user.id)} 
                 onFocus={() => clearChannelUnread(channelId)}
+                onImageUpload={handleImageUpload}
               />
             </div>
           </>

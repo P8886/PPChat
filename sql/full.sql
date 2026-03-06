@@ -44,9 +44,11 @@ create table public.messages (
   inserted_at   timestamp with time zone default timezone('utc'::text, now()) not null,
   message       text,
   user_id       uuid references public.users not null,
-  channel_id    bigint references public.channels on delete cascade not null
+  channel_id    bigint references public.channels on delete cascade not null,
+  message_type  text default 'text' not null
 );
 comment on table public.messages is 'Individual messages sent by each user.';
+comment on column public.messages.message_type is 'Message type: text or image';
 
 -- USER ROLES 用户角色表
 create table public.user_roles (
@@ -260,3 +262,35 @@ create policy "Allow auth admin to read user roles" ON public.user_roles
 as permissive for select
 to supabase_auth_admin
 using (true);
+
+-- ============================================
+-- 9. Storage 权限配置 (chat-images bucket)
+-- ============================================
+
+-- 注意：需要先在 Supabase Dashboard 中创建名为 'chat-images' 的 bucket
+-- 并将其设置为 Public bucket
+
+-- 允许认证用户上传图片到 chat-images bucket
+create policy "Allow authenticated users to upload images"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'chat-images');
+
+-- 允许认证用户更新自己上传的图片
+create policy "Allow users to update own images"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'chat-images' and auth.uid()::text = (storage.foldername(name))[1])
+with check (bucket_id = 'chat-images' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- 允许认证用户删除自己上传的图片
+create policy "Allow users to delete own images"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'chat-images' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- 允许所有人公开读取图片 (如果 bucket 是 public 的)
+create policy "Allow public read access to images"
+on storage.objects for select
+to public
+using (bucket_id = 'chat-images');
