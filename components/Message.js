@@ -35,7 +35,7 @@ const Message = ({ message }) => {
           <p className="text-gray-400 text-xs">
             {formatTime(message.inserted_at)}
           </p>
-          <p className="text-white bg-gray-700 px-2 sm:px-3 py-1 rounded-lg inline-block text-sm sm:text-base max-w-[200px] sm:max-w-xs break-words">
+          <p className="text-white bg-gray-700 px-2 sm:px-3 py-1 rounded-lg inline-block text-sm sm:text-base max-w-[200px] sm:max-w-xs break-words text-left">
             {message.message}
           </p>
         </div>
