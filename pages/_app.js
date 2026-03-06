@@ -1,5 +1,5 @@
 import '~/styles/style.scss'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import UserContext from 'lib/UserContext'
 import { supabase } from 'lib/Store'
@@ -30,27 +30,36 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
   }
 
   useEffect(() => {
+    let mounted = true
+
     async function saveSession(
       /** @type {Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']} */
       session
     ) {
+      if (!mounted) return
+      
       setSession(session)
       const currentUser = session?.user
+      
       if (session && currentUser) {
         const jwt = jwtDecode(session.access_token)
         currentUser.appRole = jwt.user_role
         // 获取用户名
         const profile = await fetchUserProfile(currentUser.id)
-        if (profile) {
+        if (profile && mounted) {
           currentUser.username = profile.username
         }
-      }
-      setUser(currentUser ?? null)
-      setUserLoaded(!!currentUser)
-      if (currentUser) {
-        // 恢复上次访问的房间，默认为1
-        const lastChannel = localStorage.getItem(LAST_CHANNEL_KEY) || '1'
-        router.push('/channels/[id]', `/channels/${lastChannel}`)
+        if (mounted) {
+          setUser(currentUser)
+          setUserLoaded(true)
+          // 恢复上次访问的房间，默认为1
+          const lastChannel = localStorage.getItem(LAST_CHANNEL_KEY) || '1'
+          router.push('/channels/[id]', `/channels/${lastChannel}`)
+        }
+      } else {
+        // 无session时清空用户状态
+        setUser(null)
+        setUserLoaded(false)
       }
     }
 
@@ -58,42 +67,37 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
 
     const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log(session)
-        saveSession(session)
+        if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setUserLoaded(false)
+          setSession(null)
+          router.push('/')
+        } else if (session) {
+          saveSession(session)
+        }
       }
     )
 
-    // 监听users表变化，更新用户名
-    const userChannel = supabase
-      .channel('public:users:user_profile')
-      .on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'users' },
-        (payload) => {
-          if (user && payload.new.id === user.id) {
-            setUser(prev => ({ ...prev, username: payload.new.username }))
-          }
-        }
-      )
-      .subscribe()
-
     return () => {
+      mounted = false
       authListener.unsubscribe()
-      supabase.removeChannel(userChannel)
     }
-  }, [])
+  }, [router])
 
   // 手动刷新用户信息
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (!user?.id) return
     const profile = await fetchUserProfile(user.id)
     if (profile) {
       setUser(prev => ({ ...prev, username: profile.username }))
     }
-  }
+  }, [user?.id])
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (!error) {
+      setUser(null)
+      setUserLoaded(false)
       router.push('/')
     }
   }
