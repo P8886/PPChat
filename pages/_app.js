@@ -6,8 +6,6 @@ import { supabase } from 'lib/Store'
 import { jwtDecode } from 'jwt-decode'
 import Head from 'next/head'
 
-const LAST_CHANNEL_KEY = 'ppchat_last_channel'
-
 export default function SupabaseSlackClone({ Component, pageProps }) {
   const [userLoaded, setUserLoaded] = useState(false)
   const [user, setUser] = useState(null)
@@ -52,9 +50,11 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
         if (mounted) {
           setUser(currentUser)
           setUserLoaded(true)
-          // 恢复上次访问的房间，默认为1
-          const lastChannel = localStorage.getItem(LAST_CHANNEL_KEY) || '1'
-          router.push('/channels/[id]', `/channels/${lastChannel}`)
+          
+          // 如果在登录页或注册页，登录后跳转到频道列表页
+          if (router.pathname === '/' || router.pathname === '/login' || router.pathname === '/signup') {
+            router.push('/channels')
+          }
         }
       } else {
         // 无session时清空用户状态

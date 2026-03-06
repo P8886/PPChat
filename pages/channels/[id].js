@@ -73,7 +73,8 @@ const ChannelsPage = (props) => {
 
   // 当当前频道被删除时，重定向到公共频道
   useEffect(() => {
-    if (!channels.some((channel) => channel.id === Number(channelId))) {
+    // 只有当频道列表已经加载（非空）且当前频道ID不在列表中时才跳转
+    if (channels.length > 0 && channelId && !channels.some((channel) => channel.id === Number(channelId))) {
       router.push('/channels/1')
     }
   }, [channels, channelId])
