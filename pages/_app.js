@@ -59,7 +59,7 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
       } else {
         // 无session时清空用户状态
         setUser(null)
-        setUserLoaded(false)
+        setUserLoaded(true)
       }
     }
 

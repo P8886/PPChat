@@ -1,8 +1,25 @@
+import { useContext, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import Layout from '~/components/Layout'
 import { useStore } from '~/lib/Store'
+import UserContext from '~/lib/UserContext'
 
 const ChannelsPage = () => {
+  const router = useRouter()
+  const { user, userLoaded } = useContext(UserContext)
   const { channels, unreadChannels } = useStore({ channelId: null })
+
+  // 未登录重定向到登录页
+  useEffect(() => {
+    if (userLoaded && !user) {
+      router.push('/login')
+    }
+  }, [userLoaded, user, router])
+
+  // 加载中或未登录时不渲染内容
+  if (!userLoaded || !user) {
+    return null
+  }
 
   return (
     <Layout channels={channels} activeChannelId={null} unreadChannels={unreadChannels}>

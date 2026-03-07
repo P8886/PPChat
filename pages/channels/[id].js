@@ -11,7 +11,7 @@ const ACCESSIBLE_PRIVATE_KEY = 'ppchat_accessible_private'
 
 const ChannelsPage = (props) => {
   const router = useRouter()
-  const { user, authLoaded, signOut } = useContext(UserContext)
+  const { user, userLoaded, signOut } = useContext(UserContext)
   const messagesEndRef = useRef(null)
   const [needPassword, setNeedPassword] = useState(false)
   const [passwordInput, setPasswordInput] = useState('')
@@ -20,6 +20,13 @@ const ChannelsPage = (props) => {
   // 否则加载页面
   const { id: channelId } = router.query
   const { messages, channels, unreadChannels, clearChannelUnread } = useStore({ channelId })
+
+  // 未登录重定向到登录页
+  useEffect(() => {
+    if (userLoaded && !user) {
+      router.push('/login')
+    }
+  }, [userLoaded, user, router])
 
   // 保存当前房间到localStorage
   useEffect(() => {
@@ -94,6 +101,11 @@ const ChannelsPage = (props) => {
       router.push('/channels/1')
     }
   }, [channels, channelId])
+
+  // 加载中或未登录时不渲染内容
+  if (!userLoaded || !user) {
+    return null
+  }
 
   // 渲染频道和消息
   return (
