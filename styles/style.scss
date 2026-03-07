@@ -5,6 +5,15 @@
 :root {
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  
+  /* 文件管理页面变量 */
+  --primary: #3b82f6;
+  --bg: #1f2937;
+  --bg-secondary: #374151;
+  --border: #4b5563;
+  --text: #f9fafb;
+  --text-secondary: #9ca3af;
+  --hover: #4b5563;
 }
 
 html {

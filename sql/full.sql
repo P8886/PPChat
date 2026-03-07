@@ -211,9 +211,22 @@ create policy "Allow individual insert access" on public.messages for insert wit
 create policy "Allow individual update access" on public.messages for update using ( auth.uid() = user_id );
 create policy "Allow individual delete access" on public.messages for delete using ( auth.uid() = user_id );
 create policy "Allow authorized delete access" on public.messages for delete using ( authorize('messages.delete') );
+-- 允许管理员删除任何消息
+create policy "Allow admins to delete any message" on public.messages for delete
+using (
+  exists (
+    select 1 from public.user_roles 
+    where user_id = auth.uid() and role = 'admin'
+  )
+);
 
--- User Roles 策略
-create policy "Allow individual read access" on public.user_roles for select using ( auth.uid() = user_id );
+-- User Roles 策略（允许用户读取自己的角色）
+create policy "Users read own role" on public.user_roles for select 
+to authenticated
+using ( user_id = auth.uid() );
+
+-- 授权 authenticated 角色读取权限
+grant select on public.user_roles to authenticated;
 
 -- ============================================
 -- 6. 副本标识（用于实时订阅）
@@ -269,6 +282,7 @@ using (true);
 
 -- 注意：需要先在 Supabase Dashboard 中创建名为 'chat-images' 的 bucket
 -- 并将其设置为 Public bucket
+-- 图片存储路径结构: chat/{userId}/{timestamp}_{random}.jpg
 
 -- 允许认证用户上传图片到 chat-images bucket
 create policy "Allow authenticated users to upload images"
@@ -277,20 +291,21 @@ to authenticated
 with check (bucket_id = 'chat-images');
 
 -- 允许认证用户更新自己上传的图片
+-- 路径结构: chat/{userId}/file.jpg，所以取 foldername 的第二个元素
 create policy "Allow users to update own images"
 on storage.objects for update
 to authenticated
-using (bucket_id = 'chat-images' and auth.uid()::text = (storage.foldername(name))[1])
-with check (bucket_id = 'chat-images' and auth.uid()::text = (storage.foldername(name))[1]);
+using (bucket_id = 'chat-images' and auth.uid()::text = (storage.foldername(name))[2])
+with check (bucket_id = 'chat-images' and auth.uid()::text = (storage.foldername(name))[2]);
 
 -- 允许认证用户删除自己上传的图片
-create policy "Allow users to delete own images"
+create policy "Allow users to delete own files"
 on storage.objects for delete
 to authenticated
-using (bucket_id = 'chat-images' and auth.uid()::text = (storage.foldername(name))[1]);
+using (bucket_id = 'chat-images' and auth.uid()::text = (storage.foldername(name))[2]);
 
--- 允许所有人公开读取图片 (如果 bucket 是 public 的)
-create policy "Allow public read access to images"
+-- 允许所有人公开读取和列出图片
+create policy "Allow public read and list"
 on storage.objects for select
 to public
 using (bucket_id = 'chat-images');
