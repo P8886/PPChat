@@ -46,8 +46,8 @@ const MessageInput = ({ onSubmit, onFocus, onImageUpload }) => {
     
     setUploading(true)
     try {
-      await onImageUpload?.(file)
-      return true
+      const result = await onImageUpload?.(file)
+      return result
     } finally {
       setUploading(false)
     }

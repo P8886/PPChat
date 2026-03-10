@@ -73,7 +73,7 @@ const ChannelsPage = (props) => {
   const handleImageUpload = async (file) => {
     if (!user?.id) return
     
-    const { url, error } = await uploadImage(file, user.id)
+    const { url, error, fileHashId } = await uploadImage(file, user.id)
     
     if (error) {
       console.error('上传失败:', error)
@@ -82,7 +82,8 @@ const ChannelsPage = (props) => {
     }
     
     // 发送图片消息，直接传 URL，并设置 message_type 为 'image'
-    await addMessage(url, channelId, user.id, 'image')
+    // 如果有文件哈希ID，将其传递给 addMessage
+    await addMessage(url, channelId, user.id, 'image', fileHashId)
   }
 
   useEffect(() => {
