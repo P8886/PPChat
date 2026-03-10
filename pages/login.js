@@ -101,11 +101,18 @@ const Login = () => {
             </button>
           </form>
           
-          <div className="text-center mt-4">
-            <span className="text-gray-600">还没有账号？</span>
-            <Link href="/signup" className="text-indigo-700 hover:underline ml-1">
-              立即注册
-            </Link>
+          <div className="flex flex-col items-center mt-4">
+            <div className="mb-2">
+              <span className="text-gray-600">还没有账号？</span>
+              <Link href="/signup" className="text-indigo-700 hover:underline ml-1">
+                立即注册
+              </Link>
+            </div>
+            <div>
+              <Link href="/forgot-password" className="text-indigo-700 hover:underline text-sm">
+                忘记密码？
+              </Link>
+            </div>
           </div>
         </div>
       </div>
