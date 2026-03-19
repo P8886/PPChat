@@ -60,24 +60,45 @@ const UpdatePassword = () => {
 
   // 检查URL中是否有重置密码的令牌，验证用户是否通过邮件链接访问
   useEffect(() => {
+    let mounted = true
+
     const checkResetPassword = async () => {
-      // 检查URL参数中是否有重置密码的令牌
-      const { data: { session }, error } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase.auth.getSession()
       
-      // 如果用户已登录，且URL中包含重置令牌，允许用户更改密码
-      if (session) {
+      if (session && mounted) {
         setIsReady(true)
-      } else {
-        // 如果用户未登录，可能是因为令牌已过期或无效，重定向到登录页
-        setMessage('请先登录以更新密码。您可能需要重新从邮件中访问此页面。')
-        setTimeout(() => {
-          router.push('/login')
-        }, 3000)
       }
     }
     
     checkResetPassword()
-  }, [router])
+
+    // 监听 PASSWORD_RECOVERY 事件（用户从邮件链接进入时触发）
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return
+      
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsReady(true)
+      } else if (session) {
+        setIsReady(true)
+      }
+    })
+
+    // 设置超时，如果5秒后仍未准备好，显示错误
+    const timeout = setTimeout(() => {
+      if (mounted && !isReady) {
+        setMessage('链接已过期或无效，请重新申请重置密码。')
+        setTimeout(() => {
+          router.push('/forgot-password')
+        }, 3000)
+      }
+    }, 5000)
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
+  }, [router, isReady])
 
   // 如果还没准备好，可以显示加载状态
   if (!isReady && !message.includes('请先登录')) {

@@ -16,7 +16,7 @@ const ForgotPassword = () => {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login` // 重置密码后跳转到登录页
+        redirectTo: `${window.location.origin}/update-password`
       })
 
       if (error) {
