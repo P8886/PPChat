@@ -19,7 +19,7 @@ const ChannelsPage = (props) => {
 
   // 否则加载页面
   const { id: channelId } = router.query
-  const { messages, channels, unreadChannels, clearChannelUnread } = useStore({ channelId })
+  const { messages, channels, unreadChannels, clearChannelUnread } = useStore({ channelId, currentUserId: user?.id })
 
   // 未登录重定向到登录页
   useEffect(() => {
