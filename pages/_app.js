@@ -94,10 +94,25 @@ export default function SupabaseSlackClone({ Component, pageProps }) {
   }, [user?.id])
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (!error) {
+    try {
+      // 清除 localStorage 中的敏感数据
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ppchat_accessible_private')
+        localStorage.removeItem('ppchat_last_channel')
+      }
+      
+      // 调用 supabase 退出登录
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Supabase signOut error:', error)
+      }
+    } catch (e) {
+      console.error('SignOut exception:', e)
+    } finally {
+      // 无论 supabase 调用是否成功，都清除本地状态
       setUser(null)
       setUserLoaded(false)
+      setSession(null)
       router.push('/')
     }
   }
