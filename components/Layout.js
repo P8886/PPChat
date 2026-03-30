@@ -116,14 +116,35 @@ export default function Layout(props) {
   // 获取当前频道信息
   const currentChannel = props.channels.find(c => c.id === Number(props.activeChannelId))
 
+  // 连接健康状态
+  const needRefresh = props.connectionHealth?.needRefresh
+
+  const handleRefresh = () => {
+    window.location.reload()
+  }
+
   return (
     <main className="main flex w-screen overflow-hidden" style={{ height: '100dvh' }}>
       <Head>
         <title>{unreadCount > 0 ? `🔴 (${unreadCount}) ` : ''}PPChat</title>
       </Head>
+
+      {/* 连接健康提示 */}
+      {needRefresh && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-600 text-white px-4 py-2 text-center text-sm flex items-center justify-center gap-3">
+          <span>⚠️ 连接已断开，请刷新页面以恢复消息接收</span>
+          <button
+            onClick={handleRefresh}
+            className="bg-white text-yellow-700 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition"
+          >
+            立即刷新
+          </button>
+        </div>
+      )}
+
       {/* 移动端遮罩层 */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />

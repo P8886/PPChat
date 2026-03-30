@@ -19,7 +19,7 @@ const ChannelsPage = (props) => {
 
   // 否则加载页面
   const { id: channelId } = router.query
-  const { messages, channels, unreadChannels, clearChannelUnread } = useStore({ channelId, currentUserId: user?.id })
+  const { messages, channels, unreadChannels, clearChannelUnread, connectionHealth } = useStore({ channelId, currentUserId: user?.id })
 
   // 未登录重定向到登录页
   useEffect(() => {
@@ -110,7 +110,7 @@ const ChannelsPage = (props) => {
 
   // 渲染频道和消息
   return (
-    <Layout channels={channels} activeChannelId={channelId} unreadChannels={unreadChannels}>
+    <Layout channels={channels} activeChannelId={channelId} unreadChannels={unreadChannels} connectionHealth={connectionHealth}>
       <div className="relative flex flex-col h-full">
         {needPassword ? (
           <div className="flex-1 flex items-center justify-center p-4">
