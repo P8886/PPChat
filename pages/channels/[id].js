@@ -2,7 +2,7 @@ import Layout from '~/components/Layout'
 import Message from '~/components/Message'
 import MessageInput from '~/components/MessageInput'
 import { useRouter } from 'next/router'
-import { useStore, addMessage, uploadImage } from '~/lib/Store'
+import { useStore, addMessage, uploadImage, fetchMessages } from '~/lib/Store'
 import { useContext, useEffect, useRef, useState } from 'react'
 import UserContext from '~/lib/UserContext'
 
@@ -19,7 +19,7 @@ const ChannelsPage = (props) => {
 
   // 否则加载页面
   const { id: channelId } = router.query
-  const { messages, channels, unreadChannels, clearChannelUnread, connectionHealth } = useStore({ channelId, currentUserId: user?.id })
+  const { messages, channels, unreadChannels, clearChannelUnread, connectionHealth, optimisticallyAddMessage } = useStore({ channelId, currentUserId: user?.id })
 
   // 未登录重定向到登录页
   useEffect(() => {
@@ -72,18 +72,30 @@ const ChannelsPage = (props) => {
   // 处理图片上传
   const handleImageUpload = async (file) => {
     if (!user?.id) return
-    
+
     const { url, error, fileHashId } = await uploadImage(file, user.id)
-    
+
     if (error) {
       console.error('上传失败:', error)
       alert('图片上传失败，请稍后重试')
       return
     }
-    
-    // 发送图片消息，直接传 URL，并设置 message_type 为 'image'
-    // 如果有文件哈希ID，将其传递给 addMessage
-    await addMessage(url, channelId, user.id, 'image', fileHashId)
+
+    // 乐观更新：立即显示图片消息
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      message: url,
+      channel_id: channelId,
+      user_id: user.id,
+      message_type: 'image',
+      inserted_at: new Date().toISOString(),
+      author: user
+    }
+    optimisticallyAddMessage(tempMessage)
+
+    // 发送图片消息到服务器
+    const result = await addMessage(url, channelId, user.id, 'image', fileHashId)
+    console.log('图片消息发送结果:', result)
   }
 
   useEffect(() => {
@@ -148,8 +160,30 @@ const ChannelsPage = (props) => {
               className="p-2 shrink-0 bg-gray-800" 
               style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
             >
-              <MessageInput 
-                onSubmit={async (text) => addMessage(text, channelId, user.id)} 
+              <MessageInput
+                onSubmit={async (text) => {
+                  // 乐观更新：立即在本地显示消息
+                  const tempMessage = {
+                    id: `temp-${Date.now()}`,
+                    message: text,
+                    channel_id: channelId,
+                    user_id: user.id,
+                    message_type: 'text',
+                    inserted_at: new Date().toISOString(),
+                    author: user
+                  }
+                  optimisticallyAddMessage(tempMessage)
+
+                  // 发送消息到服务器
+                  try {
+                    await addMessage(text, channelId, user.id)
+                    // 发送成功，Realtime 会在连接正常时推送真实消息
+                    // 如果连接断开，页面回到前台时会自动刷新消息列表
+                  } catch (error) {
+                    console.error('发送消息失败:', error)
+                    alert('发送失败，请刷新页面重试')
+                  }
+                }}
                 onFocus={() => clearChannelUnread(channelId)}
                 onImageUpload={handleImageUpload}
               />
