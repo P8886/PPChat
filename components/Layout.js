@@ -4,6 +4,8 @@ import { useContext, useState, useEffect } from 'react'
 import UserContext from '~/lib/UserContext'
 import { addChannel, deleteChannel, updateUsername, checkUsernameAvailable } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
+import { ToastContainer, showToast } from '~/components/Toast'
+import { ConfirmDialogContainer, showConfirm } from '~/components/ConfirmDialog'
 
 const ACCESSIBLE_PRIVATE_KEY = 'ppchat_accessible_private'
 
@@ -37,6 +39,8 @@ export default function Layout(props) {
   const [usernameError, setUsernameError] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)
 
+
+
   // 同步用户名到输入框
   useEffect(() => {
     if (user?.username) {
@@ -63,13 +67,44 @@ export default function Layout(props) {
   }
 
   const handleCreateChannel = async () => {
-    if (!newChannelName.trim()) return
-    if (isPrivate && !channelPassword.trim()) {
-      alert('私密频道需要设置密码')
+    if (!newChannelName.trim()) {
+      showToast('请输入频道名称', 'error')
       return
     }
-    await addChannel(slugify(newChannelName), user.id, isPrivate, isPrivate ? channelPassword : null)
+    if (isPrivate && !channelPassword.trim()) {
+      showToast('私密频道需要设置密码', 'error')
+      return
+    }
+
+    const slug = slugify(newChannelName)
+
+    // 检查频道名是否已存在
+    const existingChannel = props.channels.find(c => c.slug === slug)
+    if (existingChannel) {
+      showToast('频道名称已存在', 'error')
+      return
+    }
+
     setShowNewChannelModal(false)
+
+    try {
+      const { data, error } = await addChannel(slug, user.id, isPrivate, isPrivate ? channelPassword : null)
+      if (error) {
+        const errorMsg = error.message || ''
+        if (error.code === '23505' || errorMsg.includes('duplicate')) {
+          showToast('频道名称已存在', 'error')
+        } else {
+          showToast('创建频道失败：' + errorMsg, 'error')
+        }
+        return
+      }
+      if (data && data.length > 0) {
+        showToast('频道创建成功', 'success')
+      }
+    } catch (error) {
+      console.error('创建频道错误:', error)
+      showToast('创建频道失败，请重试', 'error')
+    }
   }
 
   // 用户名编辑
@@ -128,6 +163,9 @@ export default function Layout(props) {
       <Head>
         <title>{unreadCount > 0 ? `🔴 (${unreadCount}) ` : ''}PPChat</title>
       </Head>
+
+      <ToastContainer />
+      <ConfirmDialogContainer />
 
       {/* 连接健康提示 */}
       {needRefresh && (
@@ -370,9 +408,25 @@ const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => 
     return accessible.includes(Number(channel.id))
   }
 
+  const handleDelete = () => {
+    showConfirm({
+      title: '删除频道',
+      message: `确定要删除频道 #${channel.slug} 吗？`,
+      onConfirm: async () => {
+        try {
+          await deleteChannel(channel.id)
+          showToast('频道已删除', 'success')
+        } catch (error) {
+          console.error('删除频道错误:', error)
+          showToast('删除频道失败', 'error')
+        }
+      }
+    })
+  }
+
   return (
     <li className="flex items-center justify-between">
-      <Link 
+      <Link
         href={`/channels/${channel.id}`}
         className={isActiveChannel ? 'font-bold' : ''}
         onClick={onSelect}
@@ -382,7 +436,7 @@ const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => 
         {shouldShowUnread() && <span className="ml-2 text-red-500 text-xs">●</span>}
       </Link>
       {channel.id !== 1 && (channel.created_by === user?.id || user?.appRole === 'admin') && (
-        <button onClick={() => deleteChannel(channel.id)}>
+        <button onClick={handleDelete}>
           <TrashIcon />
         </button>
       )}
