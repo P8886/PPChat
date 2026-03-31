@@ -374,6 +374,7 @@ export default function FilesPage() {
           flex-direction: column;
           overflow: hidden;
           background: var(--bg-secondary);
+          height: 100%;
         }
         
         .stats-header {
@@ -517,7 +518,9 @@ export default function FilesPage() {
         .files-content {
           flex: 1;
           overflow: auto;
+          overflow-y: scroll;
           padding: 16px;
+          min-height: 0;
         }
         
         .loading, .empty {
