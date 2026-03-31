@@ -39,8 +39,6 @@ export default function Layout(props) {
   const [usernameError, setUsernameError] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)
 
-
-
   // 同步用户名到输入框
   useEffect(() => {
     if (user?.username) {

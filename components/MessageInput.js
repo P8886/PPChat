@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { showToast } from '~/components/Toast'
 
 const MessageInput = ({ onSubmit, onFocus, onImageUpload }) => {
   const [messageText, setMessageText] = useState('')
@@ -40,7 +41,7 @@ const MessageInput = ({ onSubmit, onFocus, onImageUpload }) => {
     
     // 检查文件大小 (最大 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('图片大小不能超过 5MB')
+      showToast('图片大小不能超过 5MB', 'error')
       return false
     }
     

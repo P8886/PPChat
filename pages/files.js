@@ -1,8 +1,8 @@
 import { useState, useEffect, useContext, useMemo } from 'react'
 import { useRouter } from 'next/router'
-import Layout from '../components/Layout'
-import UserContext from '../lib/UserContext'
-import { useStore } from '../lib/Store'
+import Layout from '~/components/Layout'
+import UserContext from '~/lib/UserContext'
+import { useStore } from '~/lib/Store'
 import {
   listAllStorageFiles,
   deleteStorageFile,
@@ -11,7 +11,9 @@ import {
   fetchUsers,
   checkIsAdmin,
   formatFileSize,
-} from '../lib/Store'
+} from '~/lib/Store'
+import { ToastContainer, showToast } from '~/components/Toast'
+import { ConfirmDialogContainer, showConfirm } from '~/components/ConfirmDialog'
 
 export default function FilesPage() {
   const { user } = useContext(UserContext)
@@ -124,33 +126,43 @@ export default function FilesPage() {
   
   // 删除单个文件
   const handleDelete = async (fullPath) => {
-    if (!confirm('确定要删除这个文件吗？对应的聊天图片消息也会被删除。')) return
-    
-    setDeleting(true)
-    const result = await deleteStorageFile(fullPath)
-    if (result.error) {
-      alert('删除失败：' + result.error.message)
-    } else {
-      loadData()
-      setSelectedFiles(new Set())
-    }
-    setDeleting(false)
+    showConfirm({
+      title: '删除文件',
+      message: '确定要删除这个文件吗？对应的聊天图片消息也会被删除。',
+      onConfirm: async () => {
+        setDeleting(true)
+        const result = await deleteStorageFile(fullPath)
+        if (result.error) {
+          showToast('删除失败：' + result.error.message, 'error')
+        } else {
+          showToast('文件已删除', 'success')
+          loadData()
+          setSelectedFiles(new Set())
+        }
+        setDeleting(false)
+      }
+    })
   }
   
   // 批量删除
   const handleBatchDelete = async () => {
     if (selectedFiles.size === 0) return
-    if (!confirm(`确定要删除 ${selectedFiles.size} 个文件吗？对应的聊天图片消息也会被删除。`)) return
-    
-    setDeleting(true)
-    const result = await deleteStorageFiles(Array.from(selectedFiles))
-    if (result.error) {
-      alert('删除失败：' + result.error.message)
-    } else {
-      loadData()
-      setSelectedFiles(new Set())
-    }
-    setDeleting(false)
+    showConfirm({
+      title: '批量删除',
+      message: `确定要删除 ${selectedFiles.size} 个文件吗？对应的聊天图片消息也会被删除。`,
+      onConfirm: async () => {
+        setDeleting(true)
+        const result = await deleteStorageFiles(Array.from(selectedFiles))
+        if (result.error) {
+          showToast('删除失败：' + result.error.message, 'error')
+        } else {
+          showToast(`已删除 ${result.deletedCount || selectedFiles.size} 个文件`, 'success')
+          loadData()
+          setSelectedFiles(new Set())
+        }
+        setDeleting(false)
+      }
+    })
   }
   
   // 计算总大小
@@ -159,10 +171,12 @@ export default function FilesPage() {
   }, [filteredFiles])
   
   if (!user) return null
-  
-  
+
   return (
-    <Layout channels={channels} unreadChannels={unreadChannels}>
+    <>
+      <ToastContainer />
+      <ConfirmDialogContainer />
+      <Layout channels={channels} unreadChannels={unreadChannels}>
       <div className="files-page">
         {/* 头部统计 - 仅管理员可见 */}
         {isAdmin && (
@@ -783,5 +797,6 @@ export default function FilesPage() {
         }
       `}</style>
     </Layout>
+    </>
   )
 }
