@@ -2,7 +2,7 @@ import Layout from '~/components/Layout'
 import Message from '~/components/Message'
 import MessageInput from '~/components/MessageInput'
 import { useRouter } from 'next/router'
-import { useStore, addMessage, uploadImage, fetchMessages } from '~/lib/Store'
+import { useStore, addMessage, uploadImage } from '~/lib/Store'
 import { useContext, useEffect, useRef, useState } from 'react'
 import UserContext from '~/lib/UserContext'
 
@@ -19,7 +19,7 @@ const ChannelsPage = (props) => {
 
   // 否则加载页面
   const { id: channelId } = router.query
-  const { messages, channels, unreadChannels, clearChannelUnread, connectionHealth, optimisticallyAddMessage } = useStore({ channelId, currentUserId: user?.id })
+  const { messages, channels, unreadChannels, clearChannelUnread, refetchMessages, connectionHealth, optimisticallyAddMessage } = useStore({ channelId, currentUserId: user?.id })
 
   // 未登录重定向到登录页
   useEffect(() => {
@@ -45,6 +45,8 @@ const ChannelsPage = (props) => {
         const accessible = JSON.parse(accessibleStr)
         if (!accessible.includes(Number(channelId))) {
           setNeedPassword(true)
+        } else {
+          setNeedPassword(false)
         }
       } else {
         setNeedPassword(false)
@@ -64,6 +66,8 @@ const ChannelsPage = (props) => {
       }
       setNeedPassword(false)
       setPasswordError('')
+      // 密码正确后，重新获取消息
+      refetchMessages()
     } else {
       setPasswordError('密码错误')
     }
