@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Head from 'next/head'
 import { useContext, useState, useEffect } from 'react'
 import UserContext from '~/lib/UserContext'
-import { addChannel, deleteChannel, updateUsername, checkUsernameAvailable, GUEST_CHANNEL_SLUG } from '~/lib/Store'
+import { addChannel, deleteChannel, updateUsername, checkUsernameAvailable, GUEST_CHANNEL_SLUG, getGuestDisplayName, getGuestSessionId } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 import { ToastContainer, showToast } from '~/components/Toast'
 import { ConfirmDialogContainer, showConfirm } from '~/components/ConfirmDialog'
@@ -39,6 +39,7 @@ export default function Layout(props) {
   const [usernameError, setUsernameError] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)
   const isGuestMode = props.guestMode || !user
+  const [guestDisplayName, setGuestDisplayName] = useState('游客')
 
   // 同步用户名到输入框
   useEffect(() => {
@@ -46,6 +47,12 @@ export default function Layout(props) {
       setUsernameInput(user.username)
     }
   }, [user?.username])
+
+  useEffect(() => {
+    if (isGuestMode) {
+      setGuestDisplayName(getGuestDisplayName(getGuestSessionId()))
+    }
+  }, [isGuestMode])
 
   const slugify = (text) => {
     return text
@@ -221,7 +228,7 @@ export default function Layout(props) {
             {isGuestMode ? (
               <>
                 <div className="p-1 rounded">
-                  <div className="font-medium text-sm">游客</div>
+                  <div className="font-medium text-sm">{guestDisplayName}</div>
                   <h6 className="text-xs text-gray-400">每分钟最多发送 10 条消息</h6>
                 </div>
                 <Link

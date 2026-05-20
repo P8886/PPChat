@@ -1,6 +1,6 @@
 import { useContext, useState } from 'react'
 import UserContext from '~/lib/UserContext'
-import { deleteMessage } from '~/lib/Store'
+import { deleteMessage, getGuestDisplayName, getGuestSessionId } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 
 const formatTime = (timestamp) => {
@@ -94,19 +94,25 @@ const ImageModal = ({ src, onClose }) => {
 
 const Message = ({ message }) => {
   const { user } = useContext(UserContext)
-  const isOwnMessage = user?.id === message.user_id
+  const isGuestMessage = !!message?.guest_session_id
+  const isOwnGuestMessage = isGuestMessage && !user && getGuestSessionId() === message.guest_session_id
+  const isOwnUserMessage = !isGuestMessage && user?.id === message.user_id
+  const isOwnMessage = isOwnGuestMessage || isOwnUserMessage
+  const canDeleteMessage = isOwnUserMessage || ['admin', 'moderator'].includes(user?.appRole)
   const [modalImage, setModalImage] = useState(null)
   
   // 判断消息类型
   const isImage = message.message_type === 'image'
   const imageUrl = isImage ? (message.message || '') : ''
-  const authorName = message?.author?.username || (message?.guest_session_id ? '游客' : '未知用户')
+  const authorName = isGuestMessage
+    ? getGuestDisplayName(message.guest_session_id)
+    : message?.author?.username || '未知用户'
 
   return (
     <div className={`py-1 flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
       <div className={`flex items-center space-x-1 sm:space-x-2 ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
         <div className="text-gray-100 w-4 shrink-0">
-          {(isOwnMessage || ['admin', 'moderator'].includes(user?.appRole)) && (
+          {canDeleteMessage && (
             <button onClick={() => deleteMessage(message.id)}>
               <TrashIcon />
             </button>
