@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Head from 'next/head'
 import { useContext, useState, useEffect } from 'react'
 import UserContext from '~/lib/UserContext'
-import { addChannel, deleteChannel, updateUsername, checkUsernameAvailable } from '~/lib/Store'
+import { addChannel, deleteChannel, updateUsername, checkUsernameAvailable, GUEST_CHANNEL_SLUG } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 import { ToastContainer, showToast } from '~/components/Toast'
 import { ConfirmDialogContainer, showConfirm } from '~/components/ConfirmDialog'
@@ -38,6 +38,7 @@ export default function Layout(props) {
   const [usernameInput, setUsernameInput] = useState('')
   const [usernameError, setUsernameError] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)
+  const isGuestMode = props.guestMode || !user
 
   // 同步用户名到输入框
   useEffect(() => {
@@ -202,18 +203,41 @@ export default function Layout(props) {
               ✕
             </button>
           </div>
-          <div className="p-2">
-            <button
-              className="bg-blue-900 hover:bg-blue-800 text-white py-2 px-4 rounded w-full transition duration-150"
-              onClick={() => newChannel()}
-            >
-              新建频道
-            </button>
-          </div>
-          <hr className="m-2" />
+          {!isGuestMode && (
+            <>
+              <div className="p-2">
+                <button
+                  className="bg-blue-900 hover:bg-blue-800 text-white py-2 px-4 rounded w-full transition duration-150"
+                  onClick={() => newChannel()}
+                >
+                  新建频道
+                </button>
+              </div>
+              <hr className="m-2" />
+            </>
+          )}
           <div className="p-2 flex flex-col space-y-2">
             {/* 用户名显示/编辑 */}
-            {editingUsername ? (
+            {isGuestMode ? (
+              <>
+                <div className="p-1 rounded">
+                  <div className="font-medium text-sm">游客</div>
+                  <h6 className="text-xs text-gray-400">每分钟最多发送 10 条消息</h6>
+                </div>
+                <Link
+                  href="/login"
+                  className="bg-blue-900 hover:bg-blue-800 text-white py-2 px-4 rounded w-full text-center transition duration-150"
+                >
+                  登录
+                </Link>
+                <Link
+                  href="/signup"
+                  className="border border-blue-800 text-gray-200 hover:bg-blue-900 py-2 px-4 rounded w-full text-center transition duration-150"
+                >
+                  注册
+                </Link>
+              </>
+            ) : editingUsername ? (
               <div className="space-y-2">
                 <input
                   type="text"
@@ -263,25 +287,31 @@ export default function Layout(props) {
                 <span className="text-gray-400 text-sm">✏️</span>
               </div>
             )}
-            <button
-              className="bg-blue-900 hover:bg-blue-800 text-white py-2 px-4 rounded w-full transition duration-150"
-              onClick={() => signOut()}
-            >
-              退出登录
-            </button>
+            {!isGuestMode && (
+              <button
+                className="bg-blue-900 hover:bg-blue-800 text-white py-2 px-4 rounded w-full transition duration-150"
+                onClick={() => signOut()}
+              >
+                退出登录
+              </button>
+            )}
           </div>
-          <hr className="m-2" />
-          <div className="p-2">
-            <Link
-              href="/files"
-              className="flex items-center gap-2 text-gray-300 hover:text-white hover:bg-gray-800 p-2 rounded transition"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-              </svg>
-              文件管理
-            </Link>
-          </div>
+          {!isGuestMode && (
+            <>
+              <hr className="m-2" />
+              <div className="p-2">
+                <Link
+                  href="/files"
+                  className="flex items-center gap-2 text-gray-300 hover:text-white hover:bg-gray-800 p-2 rounded transition"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  文件管理
+                </Link>
+              </div>
+            </>
+          )}
           <hr className="m-2" />
           <h4 className="font-bold">频道列表</h4>
           <ul className="channel-list">
@@ -292,6 +322,7 @@ export default function Layout(props) {
                 isActiveChannel={x.id === props.activeChannelId}
                 isUnread={props.unreadChannels?.has(x.id)}
                 user={user}
+                guestMode={isGuestMode}
                 onSelect={() => setSidebarOpen(false)}
               />
             ))}
@@ -394,7 +425,7 @@ export default function Layout(props) {
   )
 }
 
-const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => {
+const SidebarItem = ({ channel, isActiveChannel, isUnread, user, guestMode, onSelect }) => {
   // 检查是否应该显示未读红点
   // 私密频道只有在用户已验证密码后才显示未读提示
   const shouldShowUnread = () => {
@@ -422,10 +453,14 @@ const SidebarItem = ({ channel, isActiveChannel, isUnread, user, onSelect }) => 
     })
   }
 
+  const channelHref = guestMode && channel.slug === GUEST_CHANNEL_SLUG
+    ? '/guest'
+    : `/channels/${channel.id}`
+
   return (
     <li className="flex items-center justify-between">
       <Link
-        href={`/channels/${channel.id}`}
+        href={channelHref}
         className={isActiveChannel ? 'font-bold' : ''}
         onClick={onSelect}
       >

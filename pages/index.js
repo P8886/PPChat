@@ -21,6 +21,12 @@ const Home = () => {
             >
               注册新账号
             </Link>
+            <Link
+              href="/guest"
+              className="border border-gray-400 text-gray-700 py-3 px-4 rounded transition duration-150 hover:bg-gray-700 hover:text-white"
+            >
+              游客进入
+            </Link>
           </div>
         </div>
       </div>

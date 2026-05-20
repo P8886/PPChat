@@ -2,7 +2,7 @@ import Layout from '~/components/Layout'
 import Message from '~/components/Message'
 import MessageInput from '~/components/MessageInput'
 import { useRouter } from 'next/router'
-import { useStore, addMessage, uploadImage } from '~/lib/Store'
+import { useStore, addMessage, addGuestMessage, uploadImage, GUEST_CHANNEL_SLUG } from '~/lib/Store'
 import { useContext, useEffect, useRef, useState } from 'react'
 import UserContext from '~/lib/UserContext'
 
@@ -20,13 +20,16 @@ const ChannelsPage = (props) => {
   // 否则加载页面
   const { id: channelId } = router.query
   const { messages, channels, unreadChannels, clearChannelUnread, refetchMessages, connectionHealth, optimisticallyAddMessage } = useStore({ channelId, currentUserId: user?.id })
+  const currentChannel = channels.find((c) => c.id === Number(channelId))
+  const isGuestChannel = currentChannel?.slug === GUEST_CHANNEL_SLUG
+  const isGuestVisitor = userLoaded && !user && isGuestChannel
 
   // 未登录重定向到登录页
   useEffect(() => {
-    if (userLoaded && !user) {
+    if (userLoaded && !user && channels.length > 0 && !isGuestChannel) {
       router.push('/login')
     }
-  }, [userLoaded, user, router])
+  }, [userLoaded, user, channels.length, isGuestChannel, router])
 
   // 保存当前房间到localStorage
   useEffect(() => {
@@ -120,13 +123,13 @@ const ChannelsPage = (props) => {
   }, [channels, channelId])
 
   // 加载中或未登录时不渲染内容
-  if (!userLoaded || !user) {
+  if (!userLoaded || (!user && !isGuestChannel)) {
     return null
   }
 
   // 渲染频道和消息
   return (
-    <Layout channels={channels} activeChannelId={channelId} unreadChannels={unreadChannels} connectionHealth={connectionHealth}>
+    <Layout channels={channels} activeChannelId={Number(channelId)} unreadChannels={unreadChannels} connectionHealth={connectionHealth} guestMode={isGuestVisitor}>
       <div className="relative flex flex-col h-full">
         {needPassword ? (
           <div className="flex-1 flex items-center justify-center p-4">
@@ -166,6 +169,21 @@ const ChannelsPage = (props) => {
             >
               <MessageInput
                 onSubmit={async (text) => {
+                  if (isGuestVisitor) {
+                    const { error } = await addGuestMessage(text)
+                    if (error) {
+                      const message = error.message?.includes('游客一分钟内最多发10条信息')
+                        ? '游客一分钟内最多发10条信息，请稍后再试'
+                        : '发送失败，请刷新页面重试'
+                      alert(message)
+                      return
+                    }
+                    refetchMessages()
+                    return
+                  }
+
+                  if (!user?.id) return
+
                   // 乐观更新：立即在本地显示消息
                   const tempMessage = {
                     id: `temp-${Date.now()}`,
@@ -190,6 +208,7 @@ const ChannelsPage = (props) => {
                 }}
                 onFocus={() => clearChannelUnread(channelId)}
                 onImageUpload={handleImageUpload}
+                allowImageUpload={!!user}
               />
             </div>
           </>

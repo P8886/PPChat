@@ -100,6 +100,7 @@ const Message = ({ message }) => {
   // 判断消息类型
   const isImage = message.message_type === 'image'
   const imageUrl = isImage ? (message.message || '') : ''
+  const authorName = message?.author?.username || (message?.guest_session_id ? '游客' : '未知用户')
 
   return (
     <div className={`py-1 flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
@@ -113,7 +114,7 @@ const Message = ({ message }) => {
         </div>
         <div className={isOwnMessage ? 'text-right' : 'text-left'}>
           <p className={`font-bold text-sm sm:text-base ${isOwnMessage ? 'text-green-400' : 'text-blue-400'}`}>
-            {message?.author?.username}
+            {authorName}
           </p>
           <p className="text-gray-400 text-xs">
             {formatTime(message.inserted_at)}
