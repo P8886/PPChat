@@ -10,7 +10,19 @@ where guest_session_id is not null;
 do $$
 declare
   guest_user_id uuid := '00000000-0000-4000-8000-000000000001';
+  guest_channel_id constant bigint := 888;
+  existing_guest_channel_id bigint;
+  channel_sequence text;
 begin
+  if exists (
+    select 1
+    from public.channels
+    where id = guest_channel_id
+      and slug <> 'guest'
+  ) then
+    raise exception '频道 888 已被其他房间占用，无法作为游客房间';
+  end if;
+
   insert into auth.users (id, email)
   values (guest_user_id, 'guest@ppchat.local')
   on conflict (id) do nothing;
@@ -20,11 +32,42 @@ begin
   on conflict (id) do update
   set username = excluded.username;
 
-  insert into public.channels (slug, created_by, is_private, password)
-  values ('guest', guest_user_id, false, null)
-  on conflict (slug) do update
-  set is_private = false,
-      password = null;
+  select id into existing_guest_channel_id
+  from public.channels
+  where slug = 'guest'
+  limit 1;
+
+  if existing_guest_channel_id is not null and existing_guest_channel_id <> guest_channel_id then
+    update public.channels
+    set slug = 'guest-old-' || existing_guest_channel_id
+    where id = existing_guest_channel_id;
+  end if;
+
+  insert into public.channels (id, slug, created_by, is_private, password)
+  values (guest_channel_id, 'guest', guest_user_id, false, null)
+  on conflict (id) do update
+  set slug = excluded.slug,
+      created_by = excluded.created_by,
+      is_private = excluded.is_private,
+      password = excluded.password;
+
+  if existing_guest_channel_id is not null and existing_guest_channel_id <> guest_channel_id then
+    update public.messages
+    set channel_id = guest_channel_id
+    where channel_id = existing_guest_channel_id;
+
+    delete from public.channels
+    where id = existing_guest_channel_id;
+  end if;
+
+  channel_sequence := pg_get_serial_sequence('public.channels', 'id');
+  if channel_sequence is not null then
+    perform setval(
+      channel_sequence,
+      greatest(coalesce((select max(id) from public.channels), 1), guest_channel_id),
+      true
+    );
+  end if;
 end $$;
 
 create or replace function public.guest_channel_id()
@@ -34,7 +77,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select id from public.channels where slug = 'guest' limit 1
+  select id from public.channels where id = 888 and slug = 'guest' limit 1
 $$;
 
 create or replace function public.send_guest_message(
@@ -66,7 +109,8 @@ begin
 
   select id into guest_channel_id
   from public.channels
-  where slug = 'guest'
+  where id = 888
+    and slug = 'guest'
   limit 1;
 
   if guest_channel_id is null then
