@@ -1,6 +1,6 @@
-import { useContext, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import UserContext from '~/lib/UserContext'
-import { deleteMessage, getGuestDisplayName, getGuestSessionId } from '~/lib/Store'
+import { deleteGuestMessage, deleteMessage, getGuestDisplayName, getGuestSessionFingerprint, getGuestSessionId } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 
 const formatTime = (timestamp) => {
@@ -95,10 +95,15 @@ const ImageModal = ({ src, onClose }) => {
 const Message = ({ message }) => {
   const { user } = useContext(UserContext)
   const isGuestMessage = !!message?.guest_session_id
-  const isOwnGuestMessage = isGuestMessage && !user && getGuestSessionId() === message.guest_session_id
+  const currentGuestSessionId = !user && isGuestMessage ? getGuestSessionId() : null
+  const [currentGuestFingerprint, setCurrentGuestFingerprint] = useState(null)
+  const isOwnGuestMessage = isGuestMessage && !user && (
+    currentGuestFingerprint === message.guest_session_id ||
+    currentGuestSessionId === message.guest_session_id
+  )
   const isOwnUserMessage = !isGuestMessage && user?.id === message.user_id
   const isOwnMessage = isOwnGuestMessage || isOwnUserMessage
-  const canDeleteMessage = isOwnUserMessage || ['admin', 'moderator'].includes(user?.appRole)
+  const canDeleteMessage = isOwnGuestMessage || isOwnUserMessage || ['admin', 'moderator'].includes(user?.appRole)
   const [modalImage, setModalImage] = useState(null)
   
   // 判断消息类型
@@ -108,12 +113,40 @@ const Message = ({ message }) => {
     ? getGuestDisplayName(message.guest_session_id)
     : message?.author?.username || '未知用户'
 
+  useEffect(() => {
+    let mounted = true
+
+    if (isGuestMessage && !user) {
+      getGuestSessionFingerprint(currentGuestSessionId).then((fingerprint) => {
+        if (mounted) {
+          setCurrentGuestFingerprint(fingerprint)
+        }
+      })
+    }
+
+    return () => {
+      mounted = false
+    }
+  }, [currentGuestSessionId, isGuestMessage, user])
+
+  const handleDeleteMessage = async () => {
+    if (isOwnGuestMessage) {
+      const { error } = await deleteGuestMessage(message.id)
+      if (error) {
+        alert('删除失败，只能删除自己的游客消息')
+      }
+      return
+    }
+
+    deleteMessage(message.id)
+  }
+
   return (
     <div className={`py-1 flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
       <div className={`flex items-center space-x-1 sm:space-x-2 ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
         <div className="text-gray-100 w-4 shrink-0">
           {canDeleteMessage && (
-            <button onClick={() => deleteMessage(message.id)}>
+            <button onClick={handleDeleteMessage}>
               <TrashIcon />
             </button>
           )}

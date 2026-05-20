@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Head from 'next/head'
 import { useContext, useState, useEffect } from 'react'
 import UserContext from '~/lib/UserContext'
-import { addChannel, deleteChannel, updateUsername, checkUsernameAvailable, GUEST_CHANNEL_SLUG, getGuestDisplayName, getGuestSessionId } from '~/lib/Store'
+import { addChannel, deleteChannel, updateUsername, checkUsernameAvailable, GUEST_CHANNEL_SLUG, getGuestDisplayName, getGuestSessionFingerprint } from '~/lib/Store'
 import TrashIcon from '~/components/TrashIcon'
 import { ToastContainer, showToast } from '~/components/Toast'
 import { ConfirmDialogContainer, showConfirm } from '~/components/ConfirmDialog'
@@ -49,8 +49,18 @@ export default function Layout(props) {
   }, [user?.username])
 
   useEffect(() => {
+    let mounted = true
+
     if (isGuestMode) {
-      setGuestDisplayName(getGuestDisplayName(getGuestSessionId()))
+      getGuestSessionFingerprint().then((fingerprint) => {
+        if (mounted) {
+          setGuestDisplayName(getGuestDisplayName(fingerprint))
+        }
+      })
+    }
+
+    return () => {
+      mounted = false
     }
   }, [isGuestMode])
 

@@ -1,11 +1,30 @@
 -- Guest room support with server-side rate limiting.
 
+create extension if not exists pgcrypto with schema extensions;
+
 alter table public.messages
 add column if not exists guest_session_id text;
+
+comment on column public.messages.guest_session_id is 'SHA-256 fingerprint of the browser guest session id.';
 
 create index if not exists messages_guest_session_recent_idx
 on public.messages (guest_session_id, inserted_at desc)
 where guest_session_id is not null;
+
+create or replace function public.guest_session_hash(p_guest_session_id text)
+returns text
+language sql
+immutable
+security definer
+set search_path = public, extensions
+as $$
+  select encode(digest(p_guest_session_id, 'sha256'), 'hex')
+$$;
+
+update public.messages
+set guest_session_id = public.guest_session_hash(guest_session_id)
+where guest_session_id is not null
+  and guest_session_id !~* '^[0-9a-f]{64}$';
 
 do $$
 declare
@@ -94,6 +113,7 @@ declare
   guest_channel_id bigint;
   clean_message text;
   clean_session_id text;
+  session_hash text;
   recent_count integer;
 begin
   clean_message := nullif(btrim(p_message_text), '');
@@ -107,6 +127,8 @@ begin
     raise exception '游客会话无效';
   end if;
 
+  session_hash := public.guest_session_hash(clean_session_id);
+
   select id into guest_channel_id
   from public.channels
   where id = 888
@@ -117,13 +139,13 @@ begin
     raise exception '游客房间不存在';
   end if;
 
-  perform pg_advisory_xact_lock(hashtext(clean_session_id)::bigint);
+  perform pg_advisory_xact_lock(hashtext(session_hash)::bigint);
 
   select count(*)
   into recent_count
   from public.messages
   where channel_id = guest_channel_id
-    and guest_session_id = clean_session_id
+    and guest_session_id = session_hash
     and inserted_at >= now() - interval '1 minute';
 
   if recent_count >= 10 then
@@ -132,8 +154,44 @@ begin
 
   return query
     insert into public.messages (message, user_id, channel_id, message_type, guest_session_id)
-    values (clean_message, guest_user_id, guest_channel_id, 'text', clean_session_id)
+    values (clean_message, guest_user_id, guest_channel_id, 'text', session_hash)
     returning *;
+end;
+$$;
+
+create or replace function public.delete_guest_message(
+  p_message_id bigint,
+  p_guest_session_id text
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  clean_session_id text;
+  session_hash text;
+  deleted_message_id bigint;
+begin
+  clean_session_id := nullif(btrim(p_guest_session_id), '');
+
+  if clean_session_id is null or length(clean_session_id) < 16 or length(clean_session_id) > 80 then
+    raise exception '游客会话无效';
+  end if;
+
+  session_hash := public.guest_session_hash(clean_session_id);
+
+  delete from public.messages
+  where id = p_message_id
+    and channel_id = public.guest_channel_id()
+    and guest_session_id = session_hash
+  returning id into deleted_message_id;
+
+  if deleted_message_id is null then
+    raise exception '只能删除自己的游客消息';
+  end if;
+
+  return deleted_message_id;
 end;
 $$;
 
@@ -143,6 +201,7 @@ grant select on public.messages to anon;
 grant select on public.users to anon;
 grant execute on function public.guest_channel_id() to anon, authenticated;
 grant execute on function public.send_guest_message(text, text) to anon;
+grant execute on function public.delete_guest_message(bigint, text) to anon;
 
 drop policy if exists "Allow anon read guest channel" on public.channels;
 create policy "Allow anon read guest channel" on public.channels
