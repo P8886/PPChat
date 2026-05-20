@@ -11,6 +11,10 @@ create index if not exists messages_guest_session_recent_idx
 on public.messages (guest_session_id, inserted_at desc)
 where guest_session_id is not null;
 
+create index if not exists messages_guest_channel_daily_idx
+on public.messages (channel_id, inserted_at desc)
+where guest_session_id is not null;
+
 create or replace function public.guest_session_hash(p_guest_session_id text)
 returns text
 language sql
@@ -115,6 +119,9 @@ declare
   clean_session_id text;
   session_hash text;
   recent_count integer;
+  daily_count integer;
+  guest_day_start timestamptz;
+  guest_day_key text;
 begin
   clean_message := nullif(btrim(p_message_text), '');
   clean_session_id := nullif(btrim(p_guest_session_id), '');
@@ -139,7 +146,22 @@ begin
     raise exception '游客房间不存在';
   end if;
 
+  guest_day_start := date_trunc('day', timezone('Asia/Shanghai', now())) at time zone 'Asia/Shanghai';
+  guest_day_key := to_char(timezone('Asia/Shanghai', now()), 'YYYY-MM-DD');
+
+  perform pg_advisory_xact_lock(hashtext('guest-daily-limit:' || guest_day_key)::bigint);
   perform pg_advisory_xact_lock(hashtext(session_hash)::bigint);
+
+  select count(*)
+  into daily_count
+  from public.messages
+  where channel_id = guest_channel_id
+    and guest_session_id is not null
+    and inserted_at >= guest_day_start;
+
+  if daily_count >= 200 then
+    raise exception '所有游客一天最多发200条信息';
+  end if;
 
   select count(*)
   into recent_count

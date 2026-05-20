@@ -172,10 +172,14 @@ const ChannelsPage = (props) => {
                   if (isGuestVisitor) {
                     const { error } = await addGuestMessage(text)
                     if (error) {
-                      const message = error.message?.includes('游客一分钟内最多发10条信息')
-                        ? '游客一分钟内最多发10条信息，请稍后再试'
-                        : '发送失败，请刷新页面重试'
-                      alert(message)
+                      const errorMessage = error.message || ''
+                      let alertMessage = '发送失败，请刷新页面重试'
+                      if (errorMessage.includes('游客一分钟内最多发10条信息')) {
+                        alertMessage = '游客一分钟内最多发10条信息，请稍后再试'
+                      } else if (errorMessage.includes('所有游客一天最多发200条信息')) {
+                        alertMessage = '游客房间一天最多能累计发200条信息 防止有人无聊刷屏'
+                      }
+                      alert(alertMessage)
                       return
                     }
                     refetchMessages()
